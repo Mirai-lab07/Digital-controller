@@ -1,0 +1,1630 @@
+<!doctype html>
+<html lang="ms">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+    />
+    <title>PhonePad</title>
+    <!-- Menggunakan fon moden & berteknologi -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=JetBrains+Mono:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-dark: #090b10;
+        --bg-surface: #131722;
+        --bg-elevated: #1c2232;
+        --border-subtle: rgba(255, 255, 255, 0.08);
+        --border-highlight: rgba(255, 255, 255, 0.18);
+        --accent-primary: #10b981;
+        --accent-glow: rgba(16, 185, 129, 0.45);
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+
+        /* Warna khas butang ABXY ala konsol */
+        --btn-a: #22c55e;
+        --btn-b: #ef4444;
+        --btn-x: #3b82f6;
+        --btn-y: #eab308;
+
+        /* Pemboleh ubah dinamik saiz butang */
+        --ui-scale: 1;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--bg-dark);
+        /* Corak grid halus & cahaya latar belakang */
+        background-image:
+          radial-gradient(
+            circle at 50% 0%,
+            rgba(16, 185, 129, 0.08) 0%,
+            transparent 60%
+          ),
+          radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size:
+          100% 100%,
+          24px 24px;
+        overflow: hidden;
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        color: var(--text-main);
+      }
+
+      /* Penunjuk orientasi jika skrin dalam mod menegak (Portrait) */
+      #rotate-hint {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(9, 11, 16, 0.96);
+        backdrop-filter: blur(10px);
+        z-index: 200;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        gap: 16px;
+      }
+
+      @media (orientation: portrait) and (max-width: 600px) {
+        #rotate-hint {
+          display: flex;
+        }
+      }
+
+      .phone-icon {
+        width: 48px;
+        height: 80px;
+        border: 3px solid var(--accent-primary);
+        border-radius: 10px;
+        animation: rotatePhone 2s infinite ease-in-out;
+      }
+
+      @keyframes rotatePhone {
+        0%,
+        20% {
+          transform: rotate(0deg);
+        }
+        50%,
+        80% {
+          transform: rotate(-90deg);
+        }
+        100% {
+          transform: rotate(0deg);
+        }
+      }
+
+      /* Susun atur utama Gamepad */
+      .gamepad-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        padding: env(safe-area-inset-top, 12px) env(safe-area-inset-right, 20px)
+          env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 20px);
+      }
+
+      /* Gaya asas semua butang */
+      .btn {
+        position: absolute;
+        background: linear-gradient(180deg, #252c3f 0%, #161b28 100%);
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        border-radius: 50%;
+        border: 1px solid var(--border-highlight);
+        box-shadow:
+          0 6px 12px rgba(0, 0, 0, 0.5),
+          inset 0 1px 1px rgba(255, 255, 255, 0.15);
+        transform: scale(var(--ui-scale));
+        transition:
+          transform 0.06s ease,
+          box-shadow 0.06s ease,
+          background 0.06s ease;
+        cursor: pointer;
+      }
+
+      /* Kesan apabila ditekan */
+      .btn.on {
+        transform: translateY(3px) scale(calc(var(--ui-scale) * 0.95));
+        background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+        border-color: #6ee7b7;
+        color: #fff;
+        box-shadow:
+          0 0 18px var(--accent-glow),
+          inset 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      /* Butang Bahu (LT, RT, LB, RB) */
+      .shoulder-btn {
+        border-radius: 14px;
+        height: 46px;
+        font-size: 15px;
+        letter-spacing: 0.05em;
+      }
+
+      .trigger-btn {
+        width: 105px;
+        background: linear-gradient(180deg, #2b3349 0%, #191f2e 100%);
+      }
+
+      .bumper-btn {
+        width: 88px;
+        border-radius: 12px;
+      }
+
+      /* Butang Tengah (BACK, GUIDE/STATUS, START) */
+      .center-cluster {
+        position: absolute;
+        top: max(16px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: rgba(19, 23, 34, 0.75);
+        padding: 6px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border-subtle);
+        backdrop-filter: blur(8px);
+        z-index: 20;
+      }
+
+      /* Butang Tetapan (Settings) di tengah bawah */
+      #settings-btn {
+        position: absolute;
+        bottom: max(16px, env(safe-area-inset-bottom));
+        left: 50%;
+        transform: translateX(-50%);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(19, 23, 34, 0.85);
+        border: 1px solid var(--border-highlight);
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        cursor: pointer;
+        z-index: 30;
+        transition:
+          color 0.15s,
+          border-color 0.15s,
+          transform 0.15s;
+      }
+
+      #settings-btn:active {
+        transform: translateX(-50%) scale(0.92);
+        color: #fff;
+        border-color: var(--accent-primary);
+      }
+
+      .meta-btn {
+        position: relative;
+        width: 68px;
+        height: 32px;
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
+      .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        padding: 0 6px;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-primary);
+        box-shadow: 0 0 8px var(--accent-primary);
+      }
+
+      /* Analog Joystick */
+      .stick {
+        position: absolute;
+        width: 148px;
+        height: 148px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at center,
+          #0d1017 40%,
+          #171c29 100%
+        );
+        border: 2px solid var(--border-highlight);
+        box-shadow:
+          inset 0 6px 16px rgba(0, 0, 0, 0.85),
+          0 4px 12px rgba(0, 0, 0, 0.4);
+        transform: scale(var(--ui-scale));
+        transform-origin: bottom left;
+      }
+
+      .stick[data-s="R"] {
+        transform-origin: bottom right;
+      }
+
+      /* Garisan panduan halus pada tapak joystick */
+      .stick::before {
+        content: "";
+        position: absolute;
+        inset: 18px;
+        border-radius: 50%;
+        border: 1px dashed rgba(255, 255, 255, 0.07);
+        pointer-events: none;
+      }
+
+      .knob {
+        position: absolute;
+        left: calc(50% - 34px);
+        top: calc(50% - 34px);
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #3b455e, #1a202e);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow:
+          0 8px 16px rgba(0, 0, 0, 0.7),
+          inset 0 2px 3px rgba(255, 255, 255, 0.2);
+        pointer-events: none;
+      }
+
+      /* Lekuk tengah ibu jari pada knob */
+      .knob::after {
+        content: "";
+        position: absolute;
+        inset: 12px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 65% 65%, #2d3548, #141824);
+        border: 1px solid rgba(0, 0, 0, 0.4);
+      }
+
+      /* D-Pad (Butang Arah) */
+      .dpad-group {
+        position: absolute;
+        left: clamp(195px, 27vw, 240px);
+        bottom: clamp(24px, 7vh, 45px);
+        width: 156px;
+        height: 156px;
+        transform: scale(var(--ui-scale));
+        transform-origin: bottom left;
+      }
+
+      .dpad-btn {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        font-size: 16px;
+        transform: none;
+      }
+      .dpad-btn.on {
+        transform: translateY(3px) scale(0.95);
+      }
+
+      /* Butang Aksi ABXY */
+      .abxy-group {
+        position: absolute;
+        right: clamp(195px, 27vw, 240px);
+        bottom: clamp(24px, 7vh, 45px);
+        width: 166px;
+        height: 166px;
+        transform: scale(var(--ui-scale));
+        transform-origin: bottom right;
+      }
+
+      .face-btn {
+        width: 58px;
+        height: 58px;
+        font-size: 21px;
+        transform: none;
+      }
+      .face-btn.on {
+        transform: translateY(3px) scale(0.95);
+      }
+
+      /* =========================================================
+         GAYA KHUSUS UNTUK 4 LAYOUT (STANDARD, RACING, FPS, FIGHTING)
+         ========================================================= */
+
+      /* 1. RACING LAYOUT & PEDALS */
+      #pedal-rack {
+        display: none;
+        position: absolute;
+        right: max(24px, env(safe-area-inset-right));
+        bottom: max(22px, env(safe-area-inset-bottom));
+        gap: 12px;
+        align-items: flex-end;
+        z-index: 15;
+        transform: scale(var(--ui-scale));
+        transform-origin: bottom right;
+      }
+
+      body.layout-racing #pedal-rack {
+        display: flex;
+      }
+
+      /* Sembunyikan stick kanan & susun semula ABXY dalam mod Racing */
+      body.layout-racing .stick[data-s="R"],
+      body.layout-racing .trigger-btn {
+        display: none;
+      }
+
+      body.layout-racing .abxy-group {
+        right: auto;
+        left: clamp(195px, 27vw, 245px);
+        bottom: clamp(20px, 6vh, 38px);
+        transform: scale(calc(var(--ui-scale) * 0.85));
+        transform-origin: bottom left;
+      }
+
+      body.layout-racing .dpad-group {
+        display: none;
+      }
+
+      .pedal {
+        position: relative;
+        width: 66px;
+        height: 155px;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #1e2536 0%, #10141e 100%);
+        border: 2px solid var(--border-highlight);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 6px;
+        box-shadow:
+          0 8px 18px rgba(0, 0, 0, 0.6),
+          inset 0 2px 4px rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        transition:
+          transform 0.06s ease,
+          border-color 0.06s ease;
+      }
+
+      /* Jalur tekstur pada permukaan pedal */
+      .pedal::before {
+        content: "";
+        position: absolute;
+        inset: 34px 12px;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(255, 255, 255, 0.08) 0px,
+          rgba(255, 255, 255, 0.08) 4px,
+          transparent 4px,
+          transparent 10px
+        );
+        border-radius: 4px;
+        pointer-events: none;
+      }
+
+      .pedal-fill {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 0%;
+        opacity: 0.45;
+        pointer-events: none;
+      }
+
+      .pedal.on {
+        transform: scale(0.98);
+      }
+
+      /* Garis penunjuk aras tekanan pedal */
+      .pedal-bar {
+        position: absolute;
+        left: 6px;
+        right: 6px;
+        bottom: 0%;
+        height: 4px;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .pedal.on .pedal-bar {
+        opacity: 1;
+      }
+
+      .pedal[data-pedal="gas"] {
+        width: 72px;
+        height: 172px;
+        border-color: rgba(34, 197, 94, 0.45);
+      }
+      .pedal[data-pedal="gas"] .pedal-fill {
+        background: #22c55e;
+      }
+      .pedal[data-pedal="gas"].on {
+        border-color: #4ade80;
+        box-shadow: 0 0 18px rgba(34, 197, 94, 0.45);
+      }
+
+      .pedal[data-pedal="brake"] {
+        width: 76px;
+        height: 148px;
+        border-color: rgba(239, 68, 68, 0.45);
+      }
+      .pedal[data-pedal="brake"] .pedal-fill {
+        background: #ef4444;
+      }
+      .pedal[data-pedal="brake"].on {
+        border-color: #f87171;
+        box-shadow: 0 0 18px rgba(239, 68, 68, 0.45);
+      }
+
+      .pedal[data-pedal="clutch"] {
+        width: 62px;
+        height: 142px;
+        border-color: rgba(59, 130, 246, 0.45);
+      }
+      .pedal[data-pedal="clutch"] .pedal-fill {
+        background: #3b82f6;
+      }
+      .pedal[data-pedal="clutch"].on {
+        border-color: #60a5fa;
+        box-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
+      }
+
+      .pedal-label {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        z-index: 2;
+      }
+      .pedal-sub {
+        font-size: 11px;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        color: var(--text-muted);
+        z-index: 2;
+      }
+      .pedal.on .pedal-sub {
+        color: #fff;
+      }
+
+      /* 2. FPS LAYOUT (Butang Fire/Aim besar di ibu jari) */
+      body.layout-fps .trigger-btn[data-b="RT"] {
+        top: auto;
+        bottom: 195px;
+        right: max(32px, env(safe-area-inset-right));
+        width: 78px;
+        height: 78px;
+        border-radius: 50%;
+        background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+        border-color: #fca5a5;
+        font-size: 16px;
+      }
+      body.layout-fps .trigger-btn[data-b="LT"] {
+        top: auto;
+        bottom: 195px;
+        left: max(32px, env(safe-area-inset-left));
+        width: 74px;
+        height: 74px;
+        border-radius: 50%;
+      }
+      body.layout-fps .bumper-btn[data-b="LB"] {
+        left: max(24px, env(safe-area-inset-left));
+      }
+      body.layout-fps .bumper-btn[data-b="RB"] {
+        right: max(24px, env(safe-area-inset-right));
+      }
+
+      /* 3. FIGHTING LAYOUT (Arcade 6-Button + D-Pad Utama) */
+      body.layout-fighting .stick[data-s="L"],
+      body.layout-fighting .stick[data-s="R"] {
+        display: none;
+      }
+      body.layout-fighting .dpad-group {
+        left: max(36px, env(safe-area-inset-left));
+        bottom: max(32px, env(safe-area-inset-bottom));
+        transform: scale(calc(var(--ui-scale) * 1.18));
+      }
+      body.layout-fighting .abxy-group {
+        right: calc(
+          max(28px, env(safe-area-inset-right)) + (68px * var(--ui-scale))
+        );
+        bottom: max(34px, env(safe-area-inset-bottom));
+        width: 126px;
+        height: 126px;
+        transform-origin: bottom right;
+      }
+      /* Susunan 2 baris arked (X, Y, RB di atas | A, B, RT di bawah) */
+      body.layout-fighting .face-btn[data-b="X"] {
+        left: 0;
+        top: 0;
+      }
+      body.layout-fighting .face-btn[data-b="Y"] {
+        left: 68px;
+        top: 0;
+      }
+      body.layout-fighting .face-btn[data-b="A"] {
+        left: 0;
+        top: 68px;
+        bottom: auto;
+      }
+      body.layout-fighting .face-btn[data-b="B"] {
+        left: 68px;
+        top: 68px;
+        right: auto;
+      }
+
+      body.layout-fighting .bumper-btn[data-b="RB"] {
+        top: auto;
+        bottom: calc(
+          max(34px, env(safe-area-inset-bottom)) + (68px * var(--ui-scale))
+        );
+        right: max(28px, env(safe-area-inset-right));
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        transform-origin: bottom right;
+      }
+      body.layout-fighting .trigger-btn[data-b="RT"] {
+        top: auto;
+        bottom: max(34px, env(safe-area-inset-bottom));
+        right: max(28px, env(safe-area-inset-right));
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        transform-origin: bottom right;
+      }
+      body.layout-fighting .bumper-btn[data-b="RB"].on,
+      body.layout-fighting .trigger-btn[data-b="RT"].on {
+        transform: translateY(3px) scale(calc(var(--ui-scale) * 0.95));
+      }
+
+      /* =========================================================
+         MODAL TETAPAN (SETTINGS PANEL)
+         ========================================================= */
+      #settings-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(9, 11, 16, 0.82);
+        backdrop-filter: blur(12px);
+        z-index: 120;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        touch-action: auto;
+      }
+
+      #settings-modal * {
+        user-select: auto;
+        -webkit-user-select: auto;
+        touch-action: auto;
+      }
+
+      .settings-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-highlight);
+        border-radius: 22px;
+        padding: 20px 24px;
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.75);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .settings-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-bottom: 12px;
+      }
+
+      .settings-header h3 {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .close-btn {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-main);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .setting-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .setting-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* Grid 4 Layout */
+      .layout-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+
+      .layout-opt {
+        background: var(--bg-dark);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-muted);
+        padding: 10px 6px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.15s;
+      }
+
+      .layout-opt.active {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: var(--accent-primary);
+        color: #fff;
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+      }
+
+      /* Konfigurasi Susunan Pedal Racing */
+      #racing-config-box {
+        display: none;
+        background: var(--bg-dark);
+        border: 1px solid var(--border-subtle);
+        border-radius: 14px;
+        padding: 12px;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      #racing-config-box.visible {
+        display: flex;
+      }
+
+      .pedal-order-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .pedal-order-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-elevated);
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border-subtle);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .pedal-order-controls {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .mini-btn {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-highlight);
+        color: var(--text-main);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .mini-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      /* Slider & Switch */
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent-primary);
+        cursor: pointer;
+      }
+
+      .row-between {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-dark);
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border-subtle);
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: #334155;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .toggle-switch.on {
+        background: var(--accent-primary);
+      }
+
+      .toggle-switch::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform 0.2s;
+      }
+
+      .toggle-switch.on::after {
+        transform: translateX(20px);
+      }
+
+      .disconnect-btn {
+        width: 100%;
+        padding: 11px;
+        border-radius: 12px;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .disconnect-btn:active {
+        background: rgba(239, 68, 68, 0.3);
+      }
+
+      /* Warna huruf & gelang lembut untuk ABXY */
+      .face-btn[data-b="A"] {
+        color: var(--btn-a);
+        border-color: rgba(34, 197, 94, 0.35);
+      }
+      .face-btn[data-b="B"] {
+        color: var(--btn-b);
+        border-color: rgba(239, 68, 68, 0.35);
+      }
+      .face-btn[data-b="X"] {
+        color: var(--btn-x);
+        border-color: rgba(59, 130, 246, 0.35);
+      }
+      .face-btn[data-b="Y"] {
+        color: var(--btn-y);
+        border-color: rgba(234, 179, 8, 0.35);
+      }
+
+      /* Kesan nyalaan khusus mengikut warna butang ABXY bila ditekan */
+      .face-btn[data-b="A"].on {
+        background: var(--btn-a);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+        border-color: #86efac;
+      }
+      .face-btn[data-b="B"].on {
+        background: var(--btn-b);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+        border-color: #fca5a5;
+      }
+      .face-btn[data-b="X"].on {
+        background: var(--btn-x);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+        border-color: #93c5fd;
+      }
+      .face-btn[data-b="Y"].on {
+        background: var(--btn-y);
+        color: #000;
+        box-shadow: 0 0 20px rgba(234, 179, 8, 0.6);
+        border-color: #fef08a;
+      }
+
+      /* Skrin Sambungan (Overlay) */
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(9, 11, 16, 0.88);
+        backdrop-filter: blur(14px);
+        z-index: 99;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        touch-action: auto;
+      }
+
+      #overlay * {
+        user-select: auto;
+        -webkit-user-select: auto;
+        touch-action: auto;
+      }
+
+      .connect-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-highlight);
+        border-radius: 24px;
+        padding: 28px 32px;
+        width: 100%;
+        max-width: 360px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.65);
+        gap: 14px;
+      }
+
+      .logo-badge {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 20px var(--accent-glow);
+        margin-bottom: 4px;
+      }
+
+      .connect-card h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .connect-card p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.4;
+      }
+
+      #ip {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 20px;
+        font-weight: 600;
+        padding: 12px 16px;
+        width: 100%;
+        text-align: center;
+        border-radius: 12px;
+        background: var(--bg-dark);
+        color: var(--text-main);
+        border: 1px solid var(--border-highlight);
+        outline: none;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+
+      #ip:focus {
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+      }
+
+      #go {
+        width: 100%;
+        font-size: 16px;
+        font-weight: 700;
+        padding: 13px 24px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 6px 16px var(--accent-glow);
+        transition:
+          transform 0.1s,
+          filter 0.15s;
+      }
+
+      #go:active {
+        transform: scale(0.98);
+        filter: brightness(0.92);
+      }
+
+      #status {
+        font-size: 12px;
+        font-weight: 500;
+        color: #f87171;
+        min-height: 18px;
+      }
+
+      /* Pelarasan responsif untuk skrin telefon kecil (landscape) */
+      @media (max-height: 400px) {
+        .stick {
+          width: 130px;
+          height: 130px;
+        }
+        .knob {
+          width: 60px;
+          height: 60px;
+          left: calc(50% - 30px);
+          top: calc(50% - 30px);
+        }
+        .dpad-group {
+          left: 175px;
+          bottom: 16px;
+          transform: scale(0.9);
+          transform-origin: bottom left;
+        }
+        .abxy-group {
+          right: 175px;
+          bottom: 16px;
+          transform: scale(0.9);
+          transform-origin: bottom right;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Amaran pusing skrin jika telefon dalam kedudukan menegak -->
+    <div id="rotate-hint">
+      <div class="phone-icon"></div>
+      <h3 style="margin: 0; font-size: 18px">Pusingkan Telefon Anda</h3>
+      <p
+        style="
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 14px;
+          max-width: 260px;
+        "
+      >
+        Sila gunakan mod melintang (Landscape) untuk kawalan gamepad yang lebih
+        selesa.
+      </p>
+    </div>
+
+    <!-- Modal Sambungan IP -->
+    <div id="overlay">
+      <div class="connect-card">
+        <div class="logo-badge">
+          <!-- Ikon Gamepad SVG -->
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#fff"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="6" y1="12" x2="10" y2="12"></line>
+            <line x1="8" y1="10" x2="8" y2="14"></line>
+            <line x1="15" y1="13" x2="15.01" y2="13"></line>
+            <line x1="18" y1="11" x2="18.01" y2="11"></line>
+            <rect x="2" y="6" width="20" height="12" rx="6"></rect>
+          </svg>
+        </div>
+        <h2>PhonePad Pro</h2>
+        <p>Masukkan alamat IP yang dipaparkan pada aplikasi PC anda</p>
+        <input id="ip" inputmode="decimal" placeholder="192.168.1.10" />
+        <button id="go">Sambung Sekarang</button>
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <!-- Antaramuka Utama Gamepad -->
+    <div class="gamepad-container">
+      <!-- Butang Bahu Kiri -->
+      <div
+        class="btn shoulder-btn trigger-btn"
+        data-b="LT"
+        style="
+          left: max(20px, env(safe-area-inset-left));
+          top: max(16px, env(safe-area-inset-top));
+        "
+      >
+        LT
+      </div>
+      <div
+        class="btn shoulder-btn bumper-btn"
+        data-b="LB"
+        style="
+          left: calc(max(20px, env(safe-area-inset-left)) + 115px);
+          top: max(16px, env(safe-area-inset-top));
+        "
+      >
+        LB
+      </div>
+
+      <!-- Butang Bahu Kanan -->
+      <div
+        class="btn shoulder-btn bumper-btn"
+        data-b="RB"
+        style="
+          right: calc(max(20px, env(safe-area-inset-right)) + 115px);
+          top: max(16px, env(safe-area-inset-top));
+        "
+      >
+        RB
+      </div>
+      <div
+        class="btn shoulder-btn trigger-btn"
+        data-b="RT"
+        style="
+          right: max(20px, env(safe-area-inset-right));
+          top: max(16px, env(safe-area-inset-top));
+        "
+      >
+        RT
+      </div>
+
+      <!-- Kluster Tengah (Back, Status, Start) -->
+      <div class="center-cluster">
+        <div class="btn meta-btn" data-b="BACK">BACK</div>
+        <div class="status-pill" id="conn-badge" title="Status Sambungan">
+          <span class="status-dot"></span>
+          <span>LIVE</span>
+        </div>
+        <div class="btn meta-btn" data-b="START">START</div>
+      </div>
+
+      <!-- Analog Kiri (Left Stick) -->
+      <div
+        class="stick"
+        data-s="L"
+        style="
+          left: max(28px, env(safe-area-inset-left));
+          bottom: max(26px, env(safe-area-inset-bottom));
+        "
+      >
+        <div class="knob"></div>
+      </div>
+
+      <!-- Kumpulan D-Pad -->
+      <div class="dpad-group">
+        <div class="btn dpad-btn" data-b="UP" style="left: 52px; top: 0">▲</div>
+        <div class="btn dpad-btn" data-b="DOWN" style="left: 52px; bottom: 0">
+          ▼
+        </div>
+        <div class="btn dpad-btn" data-b="LEFT" style="left: 0; top: 52px">
+          ◀
+        </div>
+        <div class="btn dpad-btn" data-b="RIGHT" style="right: 0; top: 52px">
+          ▶
+        </div>
+      </div>
+
+      <!-- Analog Kanan (Right Stick) -->
+      <div
+        class="stick"
+        data-s="R"
+        style="
+          right: max(28px, env(safe-area-inset-right));
+          bottom: max(26px, env(safe-area-inset-bottom));
+        "
+      >
+        <div class="knob"></div>
+      </div>
+
+      <!-- Kumpulan Butang ABXY -->
+      <div class="abxy-group">
+        <div class="btn face-btn" data-b="Y" style="left: 54px; top: 0">Y</div>
+        <div class="btn face-btn" data-b="A" style="left: 54px; bottom: 0">
+          A
+        </div>
+        <div class="btn face-btn" data-b="X" style="left: 0; top: 54px">X</div>
+        <div class="btn face-btn" data-b="B" style="right: 0; top: 54px">B</div>
+      </div>
+
+      <!-- Rak Pedal Khusus untuk Mod Racing (Susunan dijana oleh JS) -->
+      <div id="pedal-rack"></div>
+
+      <!-- Butang Tetapan (⚙) Tengah Bawah -->
+      <button id="settings-btn" title="Tetapan Gamepad" aria-label="Tetapan">
+        ⚙
+      </button>
+    </div>
+
+    <!-- Modal Tetapan -->
+    <div id="settings-modal">
+      <div class="settings-card">
+        <div class="settings-header">
+          <h3><span>⚙</span> Tetapan Gamepad</h3>
+          <button class="close-btn" id="close-settings">✕</button>
+        </div>
+
+        <!-- 1. Pilihan 4 Layout -->
+        <div class="setting-group">
+          <div class="setting-label">Susun Atur (Layout)</div>
+          <div class="layout-grid">
+            <button class="layout-opt active" data-layout="standard">
+              Standard
+            </button>
+            <button class="layout-opt" data-layout="racing">Racing</button>
+            <button class="layout-opt" data-layout="fps">FPS</button>
+            <button class="layout-opt" data-layout="fighting">Fighting</button>
+          </div>
+        </div>
+
+        <!-- Konfigurasi Pedal (Hanya muncul bila Racing dipilih) -->
+        <div id="racing-config-box">
+          <div class="setting-label">
+            <span>Susunan Pedal (Kiri → Kanan)</span>
+            <span style="font-size: 10px; color: var(--accent-primary)"
+              >MOD RACING</span
+            >
+          </div>
+          <div class="pedal-order-list" id="pedal-order-list"></div>
+        </div>
+
+        <!-- 2. Slider Saiz Butang -->
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>Saiz Butang & Kawalan</span>
+            <span id="scale-val" style="color: var(--text-main)">100%</span>
+          </div>
+          <input
+            type="range"
+            id="scale-slider"
+            min="0.75"
+            max="1.25"
+            step="0.05"
+            value="1"
+          />
+        </div>
+
+        <!-- 3. Suis Getar -->
+        <div class="row-between">
+          <div>
+            <div style="font-size: 13px; font-weight: 700">
+              Getaran (Haptic Feedback)
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted)">
+              Bergetar lembut semasa butang ditekan
+            </div>
+          </div>
+          <div class="toggle-switch on" id="vibrate-toggle"></div>
+        </div>
+
+        <!-- 4. Putus Sambungan -->
+        <button class="disconnect-btn" id="disconnect-btn">
+          Putus Sambungan & Tukar IP
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let ws = null;
+      let manualDisconnect = false;
+
+      const send = (o) =>
+        ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
+
+      // Tetapan lalai & muat dari localStorage
+      const defaultPedals = [
+        {
+          id: "clutch",
+          label: "CLUTCH",
+          sub: "LB",
+          type: "btn",
+          code: "LB",
+          enabled: true,
+        },
+        {
+          id: "brake",
+          label: "BRAKE",
+          sub: "LT",
+          type: "trig",
+          side: "L",
+          enabled: true,
+        },
+        {
+          id: "gas",
+          label: "GAS",
+          sub: "RT",
+          type: "trig",
+          side: "R",
+          enabled: true,
+        },
+      ];
+
+      let prefs = {
+        layout: "standard",
+        scale: 1,
+        vibrate: true,
+        pedals: JSON.parse(JSON.stringify(defaultPedals)),
+      };
+
+      try {
+        const saved = JSON.parse(localStorage.getItem("phonepad_prefs"));
+        if (saved) {
+          prefs = { ...prefs, ...saved };
+          if (!Array.isArray(prefs.pedals) || prefs.pedals.length !== 3) {
+            prefs.pedals = JSON.parse(JSON.stringify(defaultPedals));
+          }
+        }
+      } catch (e) {}
+
+      const savePrefs = () => {
+        try {
+          localStorage.setItem("phonepad_prefs", JSON.stringify(prefs));
+        } catch (e) {}
+      };
+
+      // Bina semula pedal analog slider dalam mod Racing & senarai susunan dalam Settings
+      function renderPedals() {
+        const rack = $("pedal-rack");
+        const list = $("pedal-order-list");
+        rack.innerHTML = "";
+        list.innerHTML = "";
+
+        prefs.pedals.forEach((p, idx) => {
+          // 1. Bina elemen pedal analog (slider menegak 0% - 100%)
+          if (p.enabled) {
+            const el = document.createElement("div");
+            el.className = "pedal";
+            el.dataset.pedal = p.id;
+            el.innerHTML = `
+              <div class="pedal-fill"></div>
+              <div class="pedal-bar"></div>
+              <span class="pedal-sub">0%</span>
+              <span class="pedal-label">${p.label}</span>
+            `;
+
+            const fillEl = el.querySelector(".pedal-fill");
+            const barEl = el.querySelector(".pedal-bar");
+            const subEl = el.querySelector(".pedal-sub");
+            let activeId = null;
+            let lastBtnState = false;
+
+            const updateSlide = (e) => {
+              const rect = el.getBoundingClientRect();
+              // Kira nisbah leretan dari bawah (0.0) ke atas (1.0)
+              const raw = (rect.bottom - e.clientY) / rect.height;
+              const val = Math.max(0, Math.min(1, raw));
+              const pct = Math.round(val * 100);
+
+              el.classList.toggle("on", val > 0.01);
+              fillEl.style.height = `${pct}%`;
+              barEl.style.bottom = `calc(${pct}% - 2px)`;
+              subEl.textContent = val > 0.01 ? `${pct}%` : "0%";
+
+              if (p.type === "trig") {
+                send({ t: "trig", s: p.side, v: Number(val.toFixed(3)) });
+              } else {
+                // Untuk Clutch (butang digital LB), hantar nilai analog & status tekan bila > 35%
+                const isPressed = val >= 0.35;
+                if (isPressed !== lastBtnState) {
+                  lastBtnState = isPressed;
+                  send({ t: "btn", b: p.code, down: isPressed });
+                  if (isPressed && prefs.vibrate && navigator.vibrate)
+                    navigator.vibrate(12);
+                }
+              }
+            };
+
+            const releaseSlide = (e) => {
+              if (e.pointerId !== activeId) return;
+              activeId = null;
+              el.classList.remove("on");
+              fillEl.style.height = "0%";
+              barEl.style.bottom = "0%";
+              subEl.textContent = "0%";
+
+              if (p.type === "trig") {
+                send({ t: "trig", s: p.side, v: 0 });
+              } else if (lastBtnState) {
+                lastBtnState = false;
+                send({ t: "btn", b: p.code, down: false });
+              }
+            };
+
+            el.addEventListener("pointerdown", (e) => {
+              e.preventDefault();
+              activeId = e.pointerId;
+              el.setPointerCapture(activeId);
+              if (prefs.vibrate && navigator.vibrate) navigator.vibrate(10);
+              updateSlide(e);
+            });
+            el.addEventListener("pointermove", (e) => {
+              if (e.pointerId === activeId) updateSlide(e);
+            });
+            el.addEventListener("pointerup", releaseSlide);
+            el.addEventListener("pointercancel", releaseSlide);
+
+            rack.appendChild(el);
+          }
+
+          // 2. Bina item susunan dalam modal tetapan
+          const row = document.createElement("div");
+          row.className = "pedal-order-item";
+          row.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" ${p.enabled ? "checked" : ""} data-idx="${idx}" class="pedal-chk" style="width:16px; height:16px; accent-color:var(--accent-primary);" />
+              <span>${p.label} <span style="color:var(--text-muted); font-size:11px;">(${p.sub})</span></span>
+            </div>
+            <div class="pedal-order-controls">
+              <button class="mini-btn move-left" data-idx="${idx}" ${idx === 0 ? "disabled" : ""} title="Alih ke Kiri">◀</button>
+              <button class="mini-btn move-right" data-idx="${idx}" ${idx === prefs.pedals.length - 1 ? "disabled" : ""} title="Alih ke Kanan">▶</button>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+
+        // Event tukar posisi pedal (Kiri / Kanan) & aktif/nyahaktif
+        list.querySelectorAll(".move-left").forEach((btn) => {
+          btn.onclick = () => {
+            const i = +btn.dataset.idx;
+            if (i > 0) {
+              [prefs.pedals[i - 1], prefs.pedals[i]] = [
+                prefs.pedals[i],
+                prefs.pedals[i - 1],
+              ];
+              savePrefs();
+              renderPedals();
+            }
+          };
+        });
+
+        list.querySelectorAll(".move-right").forEach((btn) => {
+          btn.onclick = () => {
+            const i = +btn.dataset.idx;
+            if (i < prefs.pedals.length - 1) {
+              [prefs.pedals[i + 1], prefs.pedals[i]] = [
+                prefs.pedals[i],
+                prefs.pedals[i + 1],
+              ];
+              savePrefs();
+              renderPedals();
+            }
+          };
+        });
+
+        list.querySelectorAll(".pedal-chk").forEach((chk) => {
+          chk.onchange = () => {
+            const i = +chk.dataset.idx;
+            prefs.pedals[i].enabled = chk.checked;
+            savePrefs();
+            renderPedals();
+          };
+        });
+      }
+
+      // Gunakan semua tetapan pada UI
+      function applyPrefs() {
+        document.body.className = `layout-${prefs.layout}`;
+        document.documentElement.style.setProperty("--ui-scale", prefs.scale);
+        $("scale-slider").value = prefs.scale;
+        $("scale-val").textContent = `${Math.round(prefs.scale * 100)}%`;
+        $("vibrate-toggle").classList.toggle("on", prefs.vibrate);
+
+        document.querySelectorAll(".layout-opt").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.layout === prefs.layout);
+        });
+
+        $("racing-config-box").classList.toggle(
+          "visible",
+          prefs.layout === "racing",
+        );
+        renderPedals();
+      }
+
+      // Kawalan Modal Tetapan
+      $("settings-btn").onclick = () =>
+        ($("settings-modal").style.display = "flex");
+      $("close-settings").onclick = () =>
+        ($("settings-modal").style.display = "none");
+      $("settings-modal").addEventListener("click", (e) => {
+        if (e.target === $("settings-modal"))
+          $("settings-modal").style.display = "none";
+      });
+
+      document.querySelectorAll(".layout-opt").forEach((btn) => {
+        btn.onclick = () => {
+          prefs.layout = btn.dataset.layout;
+          savePrefs();
+          applyPrefs();
+        };
+      });
+
+      $("scale-slider").oninput = (e) => {
+        prefs.scale = parseFloat(e.target.value);
+        savePrefs();
+        applyPrefs();
+      };
+
+      $("vibrate-toggle").onclick = () => {
+        prefs.vibrate = !prefs.vibrate;
+        if (prefs.vibrate && navigator.vibrate) navigator.vibrate(15);
+        savePrefs();
+        applyPrefs();
+      };
+
+      $("disconnect-btn").onclick = () => {
+        manualDisconnect = true;
+        $("settings-modal").style.display = "none";
+        if (ws) {
+          try {
+            ws.close();
+          } catch (e) {}
+          ws = null;
+        }
+        $("overlay").style.display = "flex";
+        $("status").style.color = "#94a3b8";
+        $("status").textContent =
+          "Sambungan diputuskan. Sila masukkan IP baharu.";
+      };
+
+      applyPrefs();
+
+      function connect(ip) {
+        if (!ip) {
+          $("status").textContent = "Sila masukkan alamat IP terlebih dahulu.";
+          return;
+        }
+        manualDisconnect = false;
+        $("status").style.color = "#94a3b8";
+        $("status").textContent = "Menyambung ke PC...";
+        try {
+          ws = new WebSocket(`ws://${ip}:8080/ws`);
+        } catch (e) {
+          $("status").style.color = "#f87171";
+          $("status").textContent = "Format IP tidak sah.";
+          return;
+        }
+        ws.onopen = () => {
+          $("overlay").style.display = "none";
+          $("status").textContent = "";
+          try {
+            localStorage.setItem("ip", ip);
+          } catch (e) {}
+          try {
+            navigator.wakeLock && navigator.wakeLock.request("screen");
+          } catch (e) {}
+        };
+        ws.onclose = ws.onerror = () => {
+          $("overlay").style.display = "flex";
+          if (!manualDisconnect) {
+            $("status").style.color = "#f87171";
+            $("status").textContent =
+              "Sambungan terputus. Semak IP, WiFi & pastikan app PC sedang berjalan.";
+          }
+        };
+      }
+
+      $("go").onclick = () => connect($("ip").value.trim());
+      $("ip").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") connect($("ip").value.trim());
+      });
+
+      // Kalau dibuka melalui browser (http://IP-PC:8080), auto connect
+      const viaBrowser =
+        location.hostname &&
+        location.hostname !== "localhost" &&
+        location.protocol.startsWith("http");
+      if (viaBrowser) {
+        connect(location.hostname);
+      } else {
+        try {
+          $("ip").value = localStorage.getItem("ip") || "";
+        } catch (e) {}
+      }
+
+      // Pengendalian Butang (Multi-touch selamat)
+      document.querySelectorAll("[data-b]").forEach((el) => {
+        const b = el.dataset.b,
+          isTrig = b === "LT" || b === "RT";
+        const press = (down) => {
+          el.classList.toggle("on", down);
+          if (isTrig) send({ t: "trig", s: b[0], v: down ? 1 : 0 });
+          else send({ t: "btn", b, down });
+          if (down && prefs.vibrate && navigator.vibrate) navigator.vibrate(12);
+        };
+        el.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          el.setPointerCapture(e.pointerId);
+          press(true);
+        });
+        ["pointerup", "pointercancel"].forEach((ev) =>
+          el.addEventListener(ev, () => press(false)),
+        );
+      });
+
+      // Pengendalian Joystick Analog
+      document.querySelectorAll(".stick").forEach((base) => {
+        const knob = base.firstElementChild,
+          s = base.dataset.s;
+        let id = null;
+        const move = (e) => {
+          const r = base.getBoundingClientRect(),
+            R = r.width / 2;
+          let dx = e.clientX - (r.left + R),
+            dy = e.clientY - (r.top + R);
+          const d = Math.hypot(dx, dy);
+          if (d > R) {
+            dx *= R / d;
+            dy *= R / d;
+          }
+          knob.style.transform = `translate(${dx}px,${dy}px)`;
+          send({ t: "stick", s, x: dx / R, y: -dy / R });
+        };
+        base.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          id = e.pointerId;
+          base.setPointerCapture(id);
+          move(e);
+        });
+        base.addEventListener("pointermove", (e) => {
+          if (e.pointerId === id) move(e);
+        });
+        const end = (e) => {
+          if (e.pointerId !== id) return;
+          id = null;
+          knob.style.transform = "";
+          send({ t: "stick", s, x: 0, y: 0 });
+        };
+        base.addEventListener("pointerup", end);
+        base.addEventListener("pointercancel", end);
+      });
+    </script>
+  </body>
+</html>
